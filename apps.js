@@ -1,187 +1,328 @@
-// MIDNIGHT CHAMPAGNE - Core Application Logic
-
-let activeTab = 'chats';
-let currentApiKey = localStorage.getItem('midnight_api_key') || '';
-let availableVoices = [];
-
-// Load all system voices from Safari / Browser
-function loadVoices() {
-  const allVoices = window.speechSynthesis.getVoices();
-  availableVoices = allVoices.filter(v => v.lang.startsWith('en'));
-}
-
-if ('speechSynthesis' in window) {
-  loadVoices();
-  window.speechSynthesis.onvoiceschanged = loadVoices;
-}
-
-// Assign a distinct, strictly male voice to each character
-function getVoiceForCharacter(char, charIndex) {
-  if (!availableVoices.length) loadVoices();
-  if (!availableVoices.length) return null;
-
-  // 1. Try finding preferred voice by name or region code
-  for (const pref of char.voice.preferred) {
-    const match = availableVoices.find(v => 
-      v.name.includes(pref) || v.lang.includes(pref)
-    );
-    if (match) return match;
-  }
-
-  // 2. Filter out female voices for fallback pool
-  const maleVoices = availableVoices.filter(v => 
-    !/Samantha|Victoria|Karen|Moira|Tessa|Nicky|Fiona|Zira|Google US English Female/i.test(v.name)
-  );
-  const pool = maleVoices.length ? maleVoices : availableVoices;
-  
-  return pool[charIndex % pool.length];
-}
-
-// Speak text using character's unique timbre, pitch, and rate
-function speakAsCharacter(charId, text) {
-  if (!('speechSynthesis' in window)) {
-    alert('Voice synthesis is not supported in this browser.');
-    return;
-  }
-
-  window.speechSynthesis.cancel(); // Stop any current speech
-
-  const charIndex = CHARACTERS.findIndex(c => c.id === charId);
-  const char = CHARACTERS[charIndex];
-  if (!char) return;
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  const selectedVoice = getVoiceForCharacter(char, charIndex);
-
-  if (selectedVoice) {
-    utterance.voice = selectedVoice;
-  }
-  utterance.pitch = char.voice.pitch;
-  utterance.rate = char.voice.rate;
-
-  window.speechSynthesis.speak(utterance);
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  const keyInput = document.getElementById('api-key-input');
-  if (keyInput && currentApiKey) {
-    keyInput.value = currentApiKey;
-  }
-
-  const saveBtn = document.getElementById('save-key-btn');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
-      const val = document.getElementById('api-key-input').value.trim();
-      if (val) {
-        localStorage.setItem('midnight_api_key', val);
-        currentApiKey = val;
-        alert('API Key successfully saved!');
-      } else {
-        alert('Please enter a valid API key.');
-      }
-    });
-  }
-
-  renderChats();
-  renderFeed();
-  renderCalls();
+    initApp();
 });
 
-// Tab Navigation Logic
-function switchTab(tabName, element) {
-  activeTab = tabName;
-  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-  
-  const targetScreen = document.getElementById(`screen-${tabName}`);
-  if (targetScreen) {
-    targetScreen.classList.remove('hidden');
-  }
+let activeCallTimer = null;
+let callSeconds = 0;
 
-  document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
-  if (element) {
-    element.classList.add('active');
-  }
+function initApp() {
+    setupNavigation();
+    renderView('chats');
 }
 
-// 1. Render Chats List
-function renderChats() {
-  const container = document.getElementById('chats-list');
-  if (!container) return;
-  
-  container.innerHTML = '';
-  CHARACTERS.forEach(char => {
-    const card = document.createElement('div');
-    card.className = 'glass-card';
-    card.style.cssText = 'display: flex; align-items: center; gap: 14px; cursor: pointer; transition: transform 0.2s;';
-    card.innerHTML = `
-      <div style="width: 50px; height: 50px; border-radius: 50%; background: var(--black-tie); display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--champagne); border: 1px solid var(--border-gold);">
-        ${char.name.charAt(0)}
-      </div>
-      <div style="flex: 1;">
-        <h4 style="font-size: 16px; color: var(--pearl);">${char.name}</h4>
-        <p style="font-size: 12px; opacity: 0.6; margin-top: 2px;">${char.status}</p>
-      </div>
+function setupNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            endCallInternal();
+            navItems.forEach(nav => nav.classList.remove('active'));
+            item.classList.add('active');
+            renderView(item.getAttribute('data-tab'));
+        });
+    });
+}
+
+function renderView(tab) {
+    const screen = document.getElementById('app-screen');
+    if (tab === 'chats') {
+        screen.innerHTML = `
+            <h1 class="view-title">Messages</h1>
+            <p class="view-subtitle">Weak Hero Class 1 Network</p>
+            <div class="chat-tabs">
+                <button class="chat-tab-btn active" onclick="switchChatTab('dms', this)">DMs</button>
+                <button class="chat-tab-btn" onclick="switchChatTab('group', this)">Group Chat</button>
+            </div>
+            <div id="chat-container"></div>
+        `;
+        renderDMs();
+    } else if (tab === 'feed') {
+        screen.innerHTML = `
+            <h1 class="view-title">Feed</h1>
+            <p class="view-subtitle">Recent updates from characters</p>
+            <div id="feed-list"></div>
+        `;
+        renderFeed();
+    } else if (tab === 'calls') {
+        screen.innerHTML = `
+            <h1 class="view-title">Voice Calls</h1>
+            <p class="view-subtitle">Select contact or start conference</p>
+            <button class="btn-primary" style="margin-bottom: 16px;" onclick="startGroupCall()">📞 Start Group Conference</button>
+            <div style="font-size: 14px; font-weight: 600; color: #9ca3af; margin-bottom: 8px;">Direct Audio Lines:</div>
+            <div id="call-contacts-container"></div>
+        `;
+        renderCallContacts();
+    } else if (tab === 'settings') {
+        const savedKey = localStorage.getItem('gemini_api_key') || '';
+        const savedName = localStorage.getItem('user_name') || 'Diana';
+        screen.innerHTML = `
+            <h1 class="view-title">Settings</h1>
+            <p class="view-subtitle">Profile & API Configuration</p>
+            <div class="settings-box">
+                <label><strong>Your Name (Nickname):</strong></label>
+                <input type="text" id="user-name-input" value="${savedName}" placeholder="Enter your name...">
+                
+                <label style="margin-top: 12px; display: block;"><strong>Gemini API Key:</strong></label>
+                <input type="password" id="api-key-input" value="${savedKey}" placeholder="AIzaSy...">
+                
+                <button class="btn-primary" style="margin-top: 10px;" onclick="saveSettings()">Save Settings</button>
+            </div>
+        `;
+    }
+}
+
+function switchChatTab(type, btn) {
+    document.querySelectorAll('.chat-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (type === 'dms') renderDMs();
+    else renderGroupChat();
+}
+
+function renderDMs() {
+    const container = document.getElementById('chat-container');
+    if (!container) return;
+    container.innerHTML = characters.map(char => `
+        <div class="card" style="display: flex; align-items: center; gap: 14px;" onclick="openChat('${char.id}')">
+            <div class="char-avatar">${char.initial}</div>
+            <div>
+                <h3 style="font-size: 16px; color: #fff; margin-bottom: 2px;">${char.name}</h3>
+                <p style="font-size: 13px; color: #9ca3af;">${char.role}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderCallContacts() {
+    const container = document.getElementById('call-contacts-container');
+    if (!container) return;
+    container.innerHTML = characters.map(char => `
+        <div class="card" style="display: flex; align-items: center; justify-content: space-between;" onclick="startPersonalCall('${char.id}')">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="char-avatar">${char.initial}</div>
+                <div>
+                    <h3 style="font-size: 16px; color: #fff; margin-bottom: 2px;">${char.name}</h3>
+                    <p style="font-size: 13px; color: #9ca3af;">Audio line active</p>
+                </div>
+            </div>
+            <span style="font-size: 20px;">📞</span>
+        </div>
+    `).join('');
+}
+
+function renderGroupChat() {
+    const container = document.getElementById('chat-container');
+    if (!container) return;
+    container.innerHTML = `
+        <div style="height: 310px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 12px; margin-bottom: 12px; display:flex; flex-direction:column; gap:8px;" id="group-messages">
+            <div style="background: rgba(255,255,255,0.08); padding: 8px 12px; border-radius: 10px; max-width: 85%;">
+                <strong style="color:#60a5fa; display:block; font-size:12px;">Ahn Su-ho</strong>
+                Hey everyone. Pretty quiet today.
+            </div>
+            <div style="background: rgba(255,255,255,0.08); padding: 8px 12px; border-radius: 10px; max-width: 85%;">
+                <strong style="color:#f43f5e; display:block; font-size:12px;">Yeon Si-eun</strong>
+                Because everyone is focusing on studies.
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="group-input" placeholder="Message group..." style="flex:1; padding: 10px; background: #0b0f19; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color:white; outline:none;">
+            <button onclick="sendGroupMessage()" class="btn-primary" style="width: auto; padding: 0 16px;">➤</button>
+        </div>
     `;
-    container.appendChild(card);
-  });
 }
 
-// 2. Render Feed Posts
 function renderFeed() {
-  const container = document.getElementById('feed-container');
-  if (!container) return;
-
-  const mockPosts = [
-    { author: 'Ahn Su-ho', time: '10m ago', text: 'Anyone wanna grab some late night snacks? Class was boring as usual.' },
-    { author: 'Yeon Si-eun', time: '1h ago', text: 'Leave me alone. I am studying.' },
-    { author: 'Park Hu-min', time: '3h ago', text: 'Eunjang is quiet tonight. Let’s keep it that way.' }
-  ];
-
-  container.innerHTML = '';
-  mockPosts.forEach(post => {
-    const postCard = document.createElement('div');
-    postCard.className = 'glass-card';
-    postCard.innerHTML = `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="font-weight: 600; color: var(--champagne);">${post.author}</span>
-        <span style="font-size: 11px; opacity: 0.5;">${post.time}</span>
-      </div>
-      <p style="font-size: 14px; line-height: 1.4; opacity: 0.9;">${post.text}</p>
-    `;
-    container.appendChild(postCard);
-  });
+    const container = document.getElementById('feed-list');
+    if (!container) return;
+    container.innerHTML = feedPosts.map(post => `
+        <div class="feed-post">
+            <div class="feed-header">
+                <div class="char-avatar" style="width: 35px; height: 35px; font-size: 14px;">${post.initial}</div>
+                <div>
+                    <strong style="font-size: 14px; color: #fff; display: block;">${post.author}</strong>
+                    <span style="font-size: 11px; color: #9ca3af;">${post.time}</span>
+                </div>
+            </div>
+            <div class="feed-text">${post.text}</div>
+        </div>
+    `).join('');
 }
 
-// 3. Render Calls Grid with Live Voice Test
-function renderCalls() {
-  const container = document.getElementById('calls-grid');
-  if (!container) return;
-
-  const greetings = {
-    sien: "What is it? Make it quick, I'm in the middle of solving a problem.",
-    suho: "Yo! What's up? You calling me to grab food or something?",
-    beomseok: "Oh, hey... thanks for calling. Did something happen?",
-    juntae: "Line is secure. What information do you need right now?",
-    humin: "Haha, hey there! Eunjang's finest speaking, how can I help?",
-    hyuntak: "Speak up! Who's causing trouble now?",
-    seongje: "Well, well... look who decided to call me. Brave move."
-  };
-
-  container.innerHTML = '';
-  CHARACTERS.forEach(char => {
-    const callCard = document.createElement('div');
-    callCard.className = 'glass-card';
-    callCard.style.cssText = 'display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 20px 12px;';
-    callCard.innerHTML = `
-      <div style="width: 60px; height: 60px; border-radius: 50%; background: var(--black-tie); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: var(--champagne); border: 1px solid var(--border-gold);">
-        ${char.name.charAt(0)}
-      </div>
-      <div>
-        <h4 style="font-size: 14px; color: var(--pearl);">${char.name}</h4>
-        <p style="font-size: 11px; opacity: 0.5; margin-top: 2px;">Secure Line</p>
-      </div>
-      <button class="btn-champagne" style="width: 100%; padding: 8px; font-size: 12px; margin-top: 4px;" onclick="speakAsCharacter('${char.id}', \`${greetings[char.id]}\`)">Call</button>
+function openChat(charId) {
+    const char = characters.find(c => c.id === charId);
+    const screen = document.getElementById('app-screen');
+    screen.innerHTML = `
+        <button onclick="renderView('chats')" style="background:none; border:none; color:#60a5fa; cursor:pointer; margin-bottom:12px; font-weight:600;">← Back</button>
+        <h1 class="view-title">${char.name}</h1>
+        <p class="view-subtitle">${char.role}</p>
+        <div id="chat-messages" style="height: 310px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 12px; margin-bottom: 12px; display:flex; flex-direction:column; gap:8px;">
+            <div style="background: rgba(255,255,255,0.08); padding: 8px 12px; border-radius: 10px; max-width: 80%;">Hey. What's on your mind?</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="chat-input" placeholder="Message..." style="flex:1; padding: 10px; background: #0b0f19; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color:white; outline:none;">
+            <button onclick="sendDM('${charId}')" class="btn-primary" style="width: auto; padding: 0 16px;">➤</button>
+        </div>
     `;
-    container.appendChild(callCard);
-  });
+}
+
+function sendDM(charId) {
+    const input = document.getElementById('chat-input');
+    const messages = document.getElementById('chat-messages');
+    if (!input || !input.value.trim()) return;
+    const text = input.value.trim();
+    const myName = getUserName();
+    
+    messages.innerHTML += `
+        <div style="background: #2563eb; padding: 8px 12px; border-radius: 10px; max-width: 80%; align-self: flex-end;">
+            <strong style="color:#93c5fd; display:block; font-size:11px;">${myName}</strong>
+            ${text}
+        </div>
+    `;
+    input.value = '';
+    
+    let apiKey = localStorage.getItem('gemini_api_key');
+    if (!apiKey) {
+        messages.innerHTML += `<div style="background: #ef4444; padding: 8px 12px; border-radius: 10px; max-width: 80%;">Error: API key required in Settings!</div>`;
+        return;
+    }
+
+    setTimeout(() => {
+        const char = characters.find(c => c.id === charId);
+        const replyText = `[${char.name}]: I'm listening. Go on.`;
+        messages.innerHTML += `<div style="background: rgba(255,255,255,0.08); padding: 8px 12px; border-radius: 10px; max-width: 80%;">${replyText}</div>`;
+        messages.scrollTop = messages.scrollHeight;
+        speakText(replyText);
+    }, 800);
+}
+
+function sendGroupMessage() {
+    const input = document.getElementById('group-input');
+    const messages = document.getElementById('group-messages');
+    if (!input || !input.value.trim()) return;
+    
+    const myName = getUserName();
+    const text = input.value.trim();
+    
+    messages.innerHTML += `
+        <div style="background: #2563eb; padding: 8px 12px; border-radius: 10px; max-width: 85%; align-self: flex-end;">
+            <strong style="color:#93c5fd; display:block; font-size:12px;">${myName} (You)</strong>
+            ${text}
+        </div>
+    `;
+    input.value = '';
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function startPersonalCall(charId) {
+    const char = characters.find(c => c.id === charId);
+    const screen = document.getElementById('app-screen');
+    
+    if (!localStorage.getItem('gemini_api_key')) {
+        alert('Gemini API key is required in Settings for voice calls!');
+        return;
+    }
+
+    screen.innerHTML = `
+        <div class="call-screen">
+            <div>
+                <p style="color: #9ca3af; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Direct Audio Call</p>
+                <h1 class="view-title" style="margin-top: 8px;">${char.name}</h1>
+                <div class="call-timer" id="call-timer">Connecting...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <div class="call-avatar-pulse">${char.initial}</div>
+                <p id="call-status-text" style="color: #d1d5db; font-size: 14px; margin-top: 10px;">Calling...</p>
+            </div>
+
+            <button class="btn-danger" onclick="endCall()">End Call</button>
+        </div>
+    `;
+
+    startTimer();
+
+    setTimeout(() => {
+        document.getElementById('call-status-text').innerText = 'Call Active';
+        const greeting = `Hello, ${getUserName()}? This is ${char.name}. I'm listening.`;
+        speakText(greeting);
+    }, 2000);
+}
+
+function startGroupCall() {
+    if (!localStorage.getItem('gemini_api_key')) {
+        alert('Gemini API key is required in Settings for voice calls!');
+        return;
+    }
+
+    const screen = document.getElementById('app-screen');
+    screen.innerHTML = `
+        <div class="call-screen">
+            <div>
+                <p style="color: #9ca3af; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Group Conference</p>
+                <h1 class="view-title" style="margin-top: 8px;">Eunjang Crew</h1>
+                <div class="call-timer" id="call-timer">Connecting...</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <div class="call-avatar-pulse" style="background: #10b981;">👥</div>
+                <p id="call-status-text" style="color: #d1d5db; font-size: 14px; margin-top: 10px;">All members on line (8 participants)...</p>
+            </div>
+
+            <button class="btn-danger" onclick="endCall()">Leave Conference</button>
+        </div>
+    `;
+
+    startTimer();
+
+    setTimeout(() => {
+        document.getElementById('call-status-text').innerText = 'Conference Active';
+        const greeting = "Hey everyone, group line is open!";
+        speakText(greeting);
+    }, 2000);
+}
+
+function startTimer() {
+    callSeconds = 0;
+    const timerEl = document.getElementById('call-timer');
+    activeCallTimer = setInterval(() => {
+        callSeconds++;
+        const mins = Math.floor(callSeconds / 60).toString().padStart(2, '0');
+        const secs = (callSeconds % 60).toString().padStart(2, '0');
+        if (timerEl) timerEl.innerText = `${mins}:${secs}`;
+    }, 1000);
+}
+
+function endCall() {
+    endCallInternal();
+    renderView('calls');
+}
+
+function endCallInternal() {
+    if (activeCallTimer) {
+        clearInterval(activeCallTimer);
+        activeCallTimer = null;
+    }
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
+}
+
+function speakText(text) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+    }
+}
+
+function saveSettings() {
+    const keyInput = document.getElementById('api-key-input');
+    const nameInput = document.getElementById('user-name-input');
+    if (keyInput) localStorage.setItem('gemini_api_key', keyInput.value.trim());
+    if (nameInput) localStorage.setItem('user_name', nameInput.value.trim());
+    alert('Settings saved successfully!');
+}
+
+function getUserName() {
+    return localStorage.getItem('user_name') || 'Diana';
 }
