@@ -7,7 +7,6 @@ let availableVoices = [];
 // Load all system voices from Safari / Browser
 function loadVoices() {
   const allVoices = window.speechSynthesis.getVoices();
-  // Filter English voices
   availableVoices = allVoices.filter(v => v.lang.startsWith('en'));
 }
 
@@ -16,12 +15,12 @@ if ('speechSynthesis' in window) {
   window.speechSynthesis.onvoiceschanged = loadVoices;
 }
 
-// Assign a distinct voice to each character
+// Assign a distinct, strictly male voice to each character
 function getVoiceForCharacter(char, charIndex) {
   if (!availableVoices.length) loadVoices();
   if (!availableVoices.length) return null;
 
-  // 1. Try finding preferred Safari voice by name or region code
+  // 1. Try finding preferred voice by name or region code
   for (const pref of char.voice.preferred) {
     const match = availableVoices.find(v => 
       v.name.includes(pref) || v.lang.includes(pref)
@@ -29,8 +28,13 @@ function getVoiceForCharacter(char, charIndex) {
     if (match) return match;
   }
 
-  // 2. Fallback: rotate through different English voices by character index so they never sound identical
-  return availableVoices[charIndex % availableVoices.length];
+  // 2. Filter out female voices for fallback pool
+  const maleVoices = availableVoices.filter(v => 
+    !/Samantha|Victoria|Karen|Moira|Tessa|Nicky|Fiona|Zira|Google US English Female/i.test(v.name)
+  );
+  const pool = maleVoices.length ? maleVoices : availableVoices;
+  
+  return pool[charIndex % pool.length];
 }
 
 // Speak text using character's unique timbre, pitch, and rate
