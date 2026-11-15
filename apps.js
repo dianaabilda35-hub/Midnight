@@ -339,7 +339,7 @@ async function sendGroupMessage() {
     messages.scrollTop = messages.scrollHeight;
 }
 
-// --- НАДЕЖДНЫЙ ЗАПРОС К GEMINI (GEMINI-2.0-FLASH) ---
+// --- ЗАПРОС К GEMINI (АКТУАЛЬНАЯ МОДЕЛЬ GEMINI-3.8-FLASH) ---
 async function callGemini(systemPrompt, userMessage) {
     const apiKey = localStorage.getItem('gemini_api_key');
     if (!apiKey) {
@@ -347,7 +347,7 @@ async function callGemini(systemPrompt, userMessage) {
     }
     
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -370,7 +370,7 @@ async function callGemini(systemPrompt, userMessage) {
     }
 }
 
-// --- ГОЛОСОВЫЕ ЗВОНКИ С МИКРОФОНОМ И СТРОГО МУЖСКИМИ ГОЛОСАМИ ---
+// --- ГОЛОСОВЫЕ ЗВОНКИ С МИКРОФОНОМ И МУЖСКИМ ФИЛЬТРОМ ---
 function startPersonalCall(charId) {
     const char = characters.find(c => c.id === charId);
     const screen = document.getElementById('app-screen');
