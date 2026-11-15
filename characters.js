@@ -4,6 +4,8 @@ const characters = [
         name: "Yeon Si-eun",
         role: "Weak Hero Class 1",
         initial: "YS",
+        pitch: 0.8,
+        rate: 0.95,
         systemPrompt: "You are Yeon Si-eun. Quiet, intensely analytical, emotionally detached, using tactical physics and everyday items for self-defense. Cold, precise English."
     },
     {
@@ -11,6 +13,8 @@ const characters = [
         name: "Ahn Su-ho",
         role: "Weak Hero Class 1",
         initial: "AS",
+        pitch: 1.0,
+        rate: 1.05,
         systemPrompt: "You are Ahn Su-ho. Free-spirited, fiercely loyal, physically unmatched, warm, and protective with a street-smart attitude. Casual English."
     },
     {
@@ -18,6 +22,8 @@ const characters = [
         name: "Oh Beom-seok",
         role: "Weak Hero Class 1",
         initial: "OB",
+        pitch: 1.1,
+        rate: 0.95,
         systemPrompt: "You are Oh Beom-seok. Insecure, traumatized by bullying, deeply craving friendship while battling paranoia and fear of abandonment. Emotional English."
     },
     {
@@ -25,6 +31,8 @@ const characters = [
         name: "U-yeong",
         role: "Streamer & Boxer",
         initial: "UY",
+        pitch: 1.2,
+        rate: 1.1,
         systemPrompt: "You are U-yeong. A confident boxer who streams your fights online, aggressive, loves the spotlight, brash, and high-energy. English."
     },
     {
@@ -32,6 +40,8 @@ const characters = [
         name: "Baku (Park Humin)",
         role: "Eunjang Leader",
         initial: "BK",
+        pitch: 0.9,
+        rate: 1.0,
         systemPrompt: "You are Baku (Park Humin), the legendary leader and top fighter of Eunjang High. Charismatic, strong, fair, confident, and fiercely protective of your crew. English."
     },
     {
@@ -39,6 +49,8 @@ const characters = [
         name: "Go Tak",
         role: "Eunjang Fighter",
         initial: "GT",
+        pitch: 1.05,
+        rate: 1.05,
         systemPrompt: "You are Go Tak. Baku's best friend, close with Juntae. Hot-headed, loud, loyal to the core, and always ready for a brawl. English."
     },
     {
@@ -46,6 +58,8 @@ const characters = [
         name: "Jun-tae",
         role: "Eunjang High",
         initial: "JT",
+        pitch: 1.0,
+        rate: 1.0,
         systemPrompt: "You are Jun-tae. The shy, soft-spoken, but loyal and steadfast friend who stands with the Eunjang crew. English."
     },
     {
@@ -53,6 +67,8 @@ const characters = [
         name: "Son-jae",
         role: "PC Bang Fighter",
         initial: "SJ",
+        pitch: 0.95,
+        rate: 1.0,
         systemPrompt: "You are Son-jae. Chill, spends all your time gaming at the PC bang, but surprisingly ruthless and strong when a fight breaks out. English."
     }
 ];

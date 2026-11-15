@@ -1,3 +1,4 @@
+// --- ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ---
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initApp);
 } else {
@@ -12,7 +13,7 @@ let isListening = false;
 function initApp() {
     setupNavigation();
     renderView('chats');
-    // Загружаем голоса заранее, чтобы браузер успел их подтянуть
+    
     if ('speechSynthesis' in window) {
         window.speechSynthesis.getVoices();
         window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
@@ -33,6 +34,8 @@ function setupNavigation() {
 
 function renderView(tab) {
     const screen = document.getElementById('app-screen');
+    if (!screen) return;
+    
     if (tab === 'chats') {
         screen.innerHTML = `
             <h1 class="view-title">Messages</h1>
@@ -93,7 +96,7 @@ function renderDMs() {
     const container = document.getElementById('chat-container');
     if (!container) return;
     container.innerHTML = characters.map(char => `
-        <div class="card" style="display: flex; align-items: center; gap: 14px;" onclick="openChat('${char.id}')">
+        <div class="card" style="display: flex; align-items: center; gap: 14px; cursor:pointer;" onclick="openChat('${char.id}')">
             <div class="char-avatar">${char.initial}</div>
             <div>
                 <h3 style="font-size: 16px; color: #fff; margin-bottom: 2px;">${char.name}</h3>
@@ -107,7 +110,7 @@ function renderCallContacts() {
     const container = document.getElementById('call-contacts-container');
     if (!container) return;
     container.innerHTML = characters.map(char => `
-        <div class="card" style="display: flex; align-items: center; justify-content: space-between;" onclick="startPersonalCall('${char.id}')">
+        <div class="card" style="display: flex; align-items: center; justify-content: space-between; cursor:pointer;" onclick="startPersonalCall('${char.id}')">
             <div style="display: flex; align-items: center; gap: 14px;">
                 <div class="char-avatar">${char.initial}</div>
                 <div>
@@ -292,8 +295,7 @@ async function sendDM(charId) {
     const typingEl = document.getElementById(typingId);
     if (typingEl) typingEl.remove();
 
-    const formattedReply = `[${char.name}]: ${replyText}`;
-    messages.innerHTML += `<div style="background: rgba(255,255,255,0.08); padding: 8px 12px; border-radius: 10px; max-width: 80%;">${formattedReply}</div>`;
+    messages.innerHTML += `<div style="background: rgba(255,255,255,0.08); padding: 8px 12px; border-radius: 10px; max-width: 80%;"><strong>${char.name}:</strong> ${replyText}</div>`;
     messages.scrollTop = messages.scrollHeight;
     speakCharacterText(charId, replyText);
 }
@@ -339,7 +341,9 @@ async function sendGroupMessage() {
 
 async function callGemini(systemPrompt, userMessage) {
     const apiKey = localStorage.getItem('gemini_api_key');
-    if (!apiKey) return "API key missing in Settings.";
+    if (!apiKey) {
+        return "API key missing in Settings.";
+    }
     
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
@@ -352,13 +356,20 @@ async function callGemini(systemPrompt, userMessage) {
             })
         });
         const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || "...";
+        console.log("Gemini API Response:", data);
+        
+        if (data.error) {
+            return `API Error: ${data.error.message}`;
+        }
+        
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Empty response.";
     } catch (e) {
-        return "Connection error.";
+        console.error("Fetch Connection error:", e);
+        return "Connection error. Check internet.";
     }
 }
 
-// --- INTERACTIVE VOICE CALLS WITH UNIQUE VOICES ---
+// --- ГОЛОСОВЫЕ ЗВОНКИ С МИКРОФОНОМ И СТРОГО МУЖСКИМИ ГОЛОСАМИ ---
 function startPersonalCall(charId) {
     const char = characters.find(c => c.id === charId);
     const screen = document.getElementById('app-screen');
@@ -381,7 +392,6 @@ function startPersonalCall(charId) {
                 <div class="call-avatar-pulse" id="call-avatar">${char.initial}</div>
                 <p id="call-status-text" style="color: #d1d5db; font-size: 14px; margin-top: 10px; text-align: center; padding: 0 10px;">Connecting...</p>
                 
-                <!-- Call Transcript Log -->
                 <div id="call-log" style="width: 100%; max-height: 140px; overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 8px; margin-top: 12px; font-size: 12px; text-align: left; display: flex; flex-direction: column; gap: 4px;">
                     <div style="color: #9ca3af;">Call connected. Tap mic and speak to ${char.name}.</div>
                 </div>
@@ -400,7 +410,8 @@ function startPersonalCall(charId) {
         const greeting = `Hello, ${getUserName()}? This is ${char.name}. I'm listening.`;
         appendCallLog(char.name, greeting);
         speakCharacterText(charId, greeting, () => {
-            document.getElementById('call-status-text').innerText = "Tap mic 🎙️ to speak";
+            const statusEl = document.getElementById('call-status-text');
+            if (statusEl) statusEl.innerText = "Tap mic 🎙️ to speak";
         });
     }, 1500);
 }
@@ -408,7 +419,7 @@ function startPersonalCall(charId) {
 function toggleMic(charId) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("Speech recognition is not supported in this browser. Please use Google Chrome or Safari.");
+        alert("Speech recognition is not supported in this browser. Please use Google Chrome.");
         return;
     }
 
@@ -424,8 +435,10 @@ function toggleMic(charId) {
 
     recognition.onstart = () => {
         isListening = true;
-        document.getElementById('call-status-text').innerText = "Listening... Speak now 🎙️";
-        document.getElementById('mic-btn').style.background = "#ef4444";
+        const statusEl = document.getElementById('call-status-text');
+        const micBtn = document.getElementById('mic-btn');
+        if (statusEl) statusEl.innerText = "Listening... Speak now 🎙️";
+        if (micBtn) micBtn.style.background = "#ef4444";
     };
 
     recognition.onresult = async (event) => {
@@ -433,33 +446,37 @@ function toggleMic(charId) {
         appendCallLog(getUserName(), speechText);
         
         const char = characters.find(c => c.id === charId);
-        document.getElementById('call-status-text').innerText = `${char.name} is thinking...`;
+        const statusEl = document.getElementById('call-status-text');
+        if (statusEl) statusEl.innerText = `${char.name} is thinking...`;
 
         const reply = await callGemini(char.systemPrompt, `Voice call context. User ${getUserName()} said in voice: "${speechText}"`);
         
         appendCallLog(char.name, reply);
-        document.getElementById('call-status-text').innerText = `${char.name} is speaking...`;
+        if (statusEl) statusEl.innerText = `${char.name} is speaking...`;
 
         speakCharacterText(charId, reply, () => {
-            document.getElementById('call-status-text').innerText = "Tap mic 🎙️ to speak";
+            if (statusEl) statusEl.innerText = "Tap mic 🎙️ to speak";
         });
     };
 
     recognition.onerror = () => {
         isListening = false;
-        document.getElementById('call-status-text').innerText = "Tap mic 🎙️ to try again";
-        document.getElementById('mic-btn').style.background = "#2563eb";
+        const statusEl = document.getElementById('call-status-text');
+        const micBtn = document.getElementById('mic-btn');
+        if (statusEl) statusEl.innerText = "Tap mic 🎙️ to try again";
+        if (micBtn) micBtn.style.background = "#2563eb";
     };
 
     recognition.onend = () => {
         isListening = false;
-        document.getElementById('mic-btn').style.background = "#2563eb";
+        const micBtn = document.getElementById('mic-btn');
+        if (micBtn) micBtn.style.background = "#2563eb";
     };
 
     try {
         recognition.start();
     } catch (e) {
-        console.error(e);
+        console.error("Recognition start error:", e);
         isListening = false;
     }
 }
@@ -471,6 +488,10 @@ function appendCallLog(sender, text) {
     log.scrollTop = log.scrollHeight;
 }
 
+function speakCharacterTest(charId, text, onEndCallback) {
+    speakCharacterText(charId, text, onEndCallback);
+}
+
 function speakCharacterText(charId, text, onEndCallback) {
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -480,13 +501,21 @@ function speakCharacterText(charId, text, onEndCallback) {
         utterance.pitch = char.pitch;
         utterance.rate = char.rate;
         
-        // Назначаем РАЗНЫЕ физические голоса из браузера для каждого персонажа
         const voices = window.speechSynthesis.getVoices();
-        const englishVoices = voices.filter(v => v.lang.includes('en') || v.lang.includes('US') || v.lang.includes('GB'));
-        if (englishVoices.length > 0) {
+        const englishVoices = voices.filter(v => v.lang.includes('en') || v.lang.includes('US') || v.lang.includes('GB') || v.lang.includes('AU'));
+        
+        // Фильтруем женские голоса, оставляя только мужские
+        const femaleKeywords = ['zira', 'hazel', 'victoria', 'samantha', 'karen', 'susan', 'jenny', 'aria', 'female', 'elena', 'catherine'];
+        let maleVoices = englishVoices.filter(v => {
+            const nameLower = v.name.toLowerCase();
+            return !femaleKeywords.some(kw => nameLower.includes(kw));
+        });
+
+        const pool = maleVoices.length > 0 ? maleVoices : englishVoices;
+        if (pool.length > 0) {
             const charIndex = characters.findIndex(c => c.id === charId);
-            const voiceIndex = charIndex % englishVoices.length;
-            utterance.voice = englishVoices[voiceIndex];
+            const voiceIndex = charIndex % pool.length;
+            utterance.voice = pool[voiceIndex];
         }
 
         utterance.onend = () => {
