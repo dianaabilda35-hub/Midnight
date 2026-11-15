@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MIDNIGHT CHAMPAGNE</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="phone-frame">
+    <!-- iOS Status Header -->
+    <div class="ios-header">
+      <span id="carrier-time">23:04</span>
+      <div class="dynamic-island"></div>
+      <span>5G 🔋</span>
+    </div>
+
+    <!-- MAIN APP SCREENS -->
+
+    <!-- 1. CHATS SCREEN -->
+    <section id="screen-chats" class="screen">
+      <div style="padding: 16px 20px;">
+        <h1 style="font-size: 28px; font-weight: 700; color: var(--champagne);">Messages</h1>
+        <p style="font-size: 13px; opacity: 0.6; margin-top: 4px;">Eunjang Underground Network</p>
+      </div>
+      <div id="chats-list" style="flex: 1; overflow-y: auto; padding: 0 16px; display: flex; flex-direction: column; gap: 12px;">
+        <!-- Dynamic chat previews will load here -->
+      </div>
+    </section>
+
+    <!-- 2. SOCIAL FEED SCREEN -->
+    <section id="screen-feed" class="screen hidden">
+      <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-gold);">
+        <h1 style="font-size: 22px; font-weight: 700; color: var(--champagne); text-align: center;">Midnight Feed</h1>
+      </div>
+      <div id="feed-container" style="flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+        <!-- Social posts will load here -->
+      </div>
+    </section>
+
+    <!-- 3. CALLS SCREEN -->
+    <section id="screen-calls" class="screen hidden">
+      <div style="padding: 16px 20px;">
+        <h1 style="font-size: 28px; font-weight: 700; color: var(--champagne);">Voice Calls</h1>
+        <p style="font-size: 13px; opacity: 0.6; margin-top: 4px;">Direct secure frequency</p>
+      </div>
+      <div id="calls-grid" style="flex: 1; overflow-y: auto; padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <!-- Character call cards will load here -->
+      </div>
+    </section>
+
+    <!-- 4. SETTINGS SCREEN -->
+    <section id="screen-settings" class="screen hidden">
+      <div style="padding: 16px 20px;">
+        <h1 style="font-size: 28px; font-weight: 700; color: var(--champagne);">Settings</h1>
+        <p style="font-size: 13px; opacity: 0.6; margin-top: 4px;">System Configuration</p>
+      </div>
+      <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+        <div class="glass-card">
+          <h3 style="font-size: 16px; color: var(--champagne); margin-bottom: 8px;">Google AI Studio API Key</h3>
+          <p style="font-size: 12px; opacity: 0.7; margin-bottom: 12px;">Enter your API key to power character intelligence.</p>
+          <input type="password" id="api-key-input" placeholder="AIza..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-gold); background: rgba(0,0,0,0.3); color: white; margin-bottom: 10px;">
+          <button id="save-key-btn" class="btn-champagne" style="width: 100%; padding: 10px;">Save Key</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- BOTTOM NAVIGATION BAR -->
+    <nav class="nav-bar">
+      <button class="nav-item active" onclick="switchTab('chats', this)">
+        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        <span>Chats</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('feed', this)">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        <span>Feed</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('calls', this)">
+        <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+        <span>Calls</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('settings', this)">
+        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="characters.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
