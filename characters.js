@@ -57,10 +57,35 @@ const characters = [
     }
 ];
 
-const feedPosts = [
-    { id: 1, author: "Ahn Su-ho", initial: "AS", time: "2h ago", text: "Rooftop is open after school. Who's in?" },
-    { id: 2, author: "Yeon Si-eun", initial: "YS", time: "5h ago", text: "Don't bother me while I'm studying." },
-    { id: 3, author: "Baku (Park Humin)", initial: "BK", time: "Yesterday", text: "Eunjang doesn't back down. Remember that." },
-    { id: 4, author: "U-yeong", initial: "UY", time: "Yesterday", text: "Going live in 10 mins. Watch me spar." },
-    { id: 5, author: "Son-jae", initial: "SJ", time: "2 days ago", text: "Anyone down for a 5v5 in the PC bang tonight?" }
+let feedPosts = [
+    { 
+        id: 1, 
+        author: "Ahn Su-ho", 
+        initial: "AS", 
+        time: "2h ago", 
+        text: "Rooftop is open after school. Who's in?", 
+        views: "14.2K", 
+        likes: "3.4K",
+        comments: [
+            { author: "Go Tak", text: "I'm bringing snacks!" },
+            { author: "shadow_99", text: "Save me a spot" },
+            { author: "eunjang_fan", text: "Suho legend 🔥" },
+            { author: "Unknown", text: "Who's fighting today?" }
+        ] 
+    },
+    { 
+        id: 2, 
+        author: "Yeon Si-eun", 
+        initial: "YS", 
+        time: "5h ago", 
+        text: "Don't bother me while I'm studying.", 
+        views: "18.9K", 
+        likes: "4.8K",
+        comments: [
+            { author: "Jun-tae", text: "Got it, won't disturb you." },
+            { author: "study_nerd", text: "Relatable lol" },
+            { author: "gangbuk_watcher", text: "Bro thinks he's main character" },
+            { author: "Ahn Su-ho", text: "Take a break man" }
+        ] 
+    }
 ];
