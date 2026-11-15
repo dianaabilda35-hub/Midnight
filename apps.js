@@ -339,35 +339,38 @@ async function sendGroupMessage() {
     messages.scrollTop = messages.scrollHeight;
 }
 
-// --- ЗАПРОС К GEMINI (АКТУАЛЬНАЯ МОДЕЛЬ GEMINI-3.8-FLASH) ---
+// --- УМНЫЙ ЗАПРОС К GEMINI С АВТОМАТИЧЕСКИМ РЕЗЕРВОМ МОДЕЛЕЙ ---
 async function callGemini(systemPrompt, userMessage) {
     const apiKey = localStorage.getItem('gemini_api_key');
     if (!apiKey) {
         return "API key missing in Settings.";
     }
     
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [
-                    { role: "user", parts: [{ text: `${systemPrompt}\n\nContext/Message: ${userMessage}` }] }
-                ]
-            })
-        });
-        const data = await response.json();
-        console.log("Gemini API Response:", data);
-        
-        if (data.error) {
-            return `API Error: ${data.error.message}`;
+    const models = ['gemini-3.8-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    
+    for (const model of models) {
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [
+                        { role: "user", parts: [{ text: `${systemPrompt}\n\nContext/Message: ${userMessage}` }] }
+                    ]
+                })
+            });
+            const data = await response.json();
+            
+            if (!data.error) {
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Empty response.";
+            }
+            console.warn(`Model ${model} busy, trying next...`, data.error.message);
+        } catch (e) {
+            console.warn(`Fetch error with ${model}:`, e);
         }
-        
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || "Error: Empty response.";
-    } catch (e) {
-        console.error("Fetch Connection error:", e);
-        return "Connection error. Check internet.";
     }
+    
+    return "API Error: All models are currently experiencing high demand. Please try again in 10 seconds.";
 }
 
 // --- ГОЛОСОВЫЕ ЗВОНКИ С МИКРОФОНОМ И МУЖСКИМ ФИЛЬТРОМ ---
